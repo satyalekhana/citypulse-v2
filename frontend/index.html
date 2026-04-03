@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CityPulse - City Intelligence Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  * { font-family: 'Inter', sans-serif; }
+  body { background: #0a0f1e; color: white; }
+  .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
+  .glass-dark { background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08); }
+  .gradient-text { background: linear-gradient(135deg, #667eea, #764ba2, #f093fb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .sidebar { background: rgba(10,15,30,0.95); border-right: 1px solid rgba(255,255,255,0.08); }
+  .nav-item { transition: all 0.2s; border-radius: 12px; }
+  .nav-item:hover { background: rgba(255,255,255,0.08); }
+  .nav-item.active { background: linear-gradient(135deg, rgba(102,126,234,0.3), rgba(118,75,162,0.3)); border: 1px solid rgba(102,126,234,0.4); }
+  .weather-card { background: linear-gradient(135deg, #1a1f3a, #2d1f4e); border: 1px solid rgba(102,126,234,0.3); }
+  .stat-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); transition: all 0.3s; }
+  .stat-card:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+  .chat-container { height: 300px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent; }
+  .chat-bubble-ai { background: rgba(102,126,234,0.2); border: 1px solid rgba(102,126,234,0.3); border-radius: 16px 16px 16px 4px; }
+  .chat-bubble-user { background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px 16px 4px 16px; }
+  #map { border-radius: 16px; }
+  .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .pulse-dot { width: 8px; height: 8px; background: #4ade80; border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .forecast-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); transition: all 0.2s; }
+  .forecast-card:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+  input, textarea { outline: none; }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+  .mobile-menu { display: none; }
+  @media (max-width: 768px) {
+    .sidebar { position: fixed; left: -280px; top: 0; height: 100vh; z-index: 50; transition: left 0.3s; width: 280px; }
+    .sidebar.open { left: 0; }
+    .mobile-menu { display: flex; }
+    .main-content { margin-left: 0; }
+  }
+</style>
+</head>
+<body class="min-h-screen flex">
+
+<!-- Sidebar -->
+<aside class="sidebar w-72 min-h-screen flex flex-col fixed left-0 top-0 h-full z-40" id="sidebar">
+  <!-- Logo -->
+  <div class="p-6 border-b border-white border-opacity-10">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xl">✈️</div>
+      <div>
+        <h1 class="text-xl font-bold gradient-text">CityPulse</h1>
+        <p class="text-xs text-gray-500">City Intelligence</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- City Search -->
+  <div class="p-4">
+    <div class="relative">
+      <input type="text" id="cityInput" placeholder="Search city..." 
+        class="w-full bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 pr-10"
+        onkeypress="if(event.key==='Enter') loadCity()"/>
+      <button onclick="loadCity()" class="absolute right-3 top-3 text-purple-400 hover:text-purple-300">
+        <i class="fas fa-search"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Popular Cities -->
+  <div class="px-4 mb-4">
+    <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Popular Cities</p>
+    <div class="flex flex-wrap gap-2">
+      <button onclick="selectCity('Tokyo')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Tokyo</button>
+      <button onclick="selectCity('Paris')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Paris</button>
+      <button onclick="selectCity('Dubai')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Dubai</button>
+      <button onclick="selectCity('London')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">London</button>
+      <button onclick="selectCity('Mumbai')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Mumbai</button>
+      <button onclick="selectCity('Singapore')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Singapore</button>
+      <button onclick="selectCity('Hyderabad')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Hyderabad</button>
+      <button onclick="selectCity('Sydney')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Sydney</button>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="px-4 flex-1">
+    <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Navigation</p>
+    <div class="space-y-1">
+      <a href="/" class="nav-item active flex items-center gap-3 px-4 py-3 text-sm text-white">
+        <i class="fas fa-th-large w-5 text-purple-400"></i> Dashboard
+      </a>
+      <a href="/about" class="nav-item flex items-center gap-3 px-4 py-3 text-sm text-gray-400 hover:text-white">
+        <i class="fas fa-info-circle w-5 text-purple-400"></i> About
+      </a>
+      <a href="/contact" class="nav-item flex items-center gap-3 px-4 py-3 text-sm text-gray-400 hover:text-white">
+        <i class="fas fa-envelope w-5 text-purple-400"></i> Contact
+      </a>
+      <a href="https://github.com/satyalekhana5/citypulse-v2" target="_blank" class="nav-item flex items-center gap-3 px-4 py-3 text-sm text-gray-400 hover:text-white">
+        <i class="fab fa-github w-5 text-purple-400"></i> GitHub
+      </a>
+    </div>
+  </nav>
+
+  <!-- Live Status -->
+  <div class="p-4 border-t border-white border-opacity-10">
+    <div class="flex items-center gap-2">
+      <div class="pulse-dot"></div>
+      <span class="text-xs text-gray-400">Live Data Active</span>
+    </div>
+    <p class="text-xs text-gray-600 mt-1">Powered by Google ADK + MCP</p>
+  </div>
+</aside>
+
+<!-- Main Content -->
+<main class="main-content ml-72 flex-1 p-6 min-h-screen" id="mainContent">
+
+  <!-- Top Bar -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-3">
+      <button class="mobile-menu items-center justify-center w-10 h-10 glass rounded-xl text-gray-400" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+      </button>
+      <div>
+        <h2 class="text-2xl font-bold text-white" id="pageTitle">Dashboard</h2>
+        <p class="text-sm text-gray-500" id="pageSubtitle">Real-time city intelligence</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="glass px-4 py-2 rounded-xl text-sm text-gray-400" id="currentTime"></div>
+      <div class="glass px-4 py-2 rounded-xl text-sm text-purple-400 font-medium" id="currentCity">Hyderabad</div>
+    </div>
+  </div>
+
+  <!-- Weather Hero Card -->
+  <div class="weather-card rounded-2xl p-6 mb-6" id="weatherCard">
+    <div class="flex items-start justify-between">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-gray-400 text-sm" id="weatherCity">Loading...</span>
+          <img id="countryFlag" src="" class="h-4 rounded-sm" alt="flag"/>
+        </div>
+        <div class="text-7xl font-black text-white mb-2" id="temperature">
+          <div class="skeleton h-16 w-32 rounded-xl"></div>
+        </div>
+        <div class="text-gray-400 text-lg capitalize" id="weatherDesc">Fetching weather...</div>
+        <div class="text-gray-500 text-sm mt-1" id="feelsLike"></div>
+      </div>
+      <div class="text-right">
+        <img id="weatherIcon" src="" class="w-24 h-24" alt="weather"/>
+        <div class="text-gray-400 text-sm mt-2" id="weatherTime"></div>
+      </div>
+    </div>
+
+    <!-- Weather Stats -->
+    <div class="grid grid-cols-4 gap-4 mt-6">
+      <div class="glass rounded-xl p-3 text-center">
+        <i class="fas fa-droplet text-blue-400 mb-1"></i>
+        <div class="text-white font-bold" id="humidity">-</div>
+        <div class="text-gray-500 text-xs">Humidity</div>
+      </div>
+      <div class="glass rounded-xl p-3 text-center">
+        <i class="fas fa-wind text-green-400 mb-1"></i>
+        <div class="text-white font-bold" id="windSpeed">-</div>
+        <div class="text-gray-500 text-xs">Wind km/h</div>
+      </div>
+      <div class="glass rounded-xl p-3 text-center">
+        <i class="fas fa-eye text-yellow-400 mb-1"></i>
+        <div class="text-white font-bold" id="visibility">-</div>
+        <div class="text-gray-500 text-xs">Visibility km</div>
+      </div>
+      <div class="glass rounded-xl p-3 text-center">
+        <i class="fas fa-gauge text-purple-400 mb-1"></i>
+        <div class="text-white font-bold" id="pressure">-</div>
+        <div class="text-gray-500 text-xs">Pressure hPa</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="stat-card rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-gray-400 text-sm">Population</span>
+        <i class="fas fa-users text-purple-400"></i>
+      </div>
+      <div class="text-2xl font-bold text-white" id="population">-</div>
+      <div class="text-gray-500 text-xs mt-1" id="countryName">-</div>
+    </div>
+    <div class="stat-card rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-gray-400 text-sm">Language</span>
+        <i class="fas fa-language text-blue-400"></i>
+      </div>
+      <div class="text-2xl font-bold text-white" id="language">-</div>
+      <div class="text-gray-500 text-xs mt-1">Official Language</div>
+    </div>
+    <div class="stat-card rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-gray-400 text-sm">Currency</span>
+        <i class="fas fa-coins text-yellow-400"></i>
+      </div>
+      <div class="text-2xl font-bold text-white" id="currency">-</div>
+      <div class="text-gray-500 text-xs mt-1">Local Currency</div>
+    </div>
+  </div>
+
+  <!-- Map + Chat Row -->
+  <div class="grid grid-cols-2 gap-6 mb-6">
+
+    <!-- Map -->
+    <div class="glass rounded-2xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold text-white flex items-center gap-2">
+          <i class="fas fa-map-location-dot text-purple-400"></i> Live Map
+        </h3>
+        <span class="text-xs text-gray-500">OpenStreetMap</span>
+      </div>
+      <div id="map" style="height: 280px;"></div>
+    </div>
+
+    <!-- AI Chat -->
+    <div class="glass rounded-2xl p-4 flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold text-white flex items-center gap-2">
+          <i class="fas fa-robot text-purple-400"></i> AI Assistant
+        </h3>
+        <div class="flex items-center gap-1">
+          <div class="pulse-dot"></div>
+          <span class="text-xs text-gray-500">Online</span>
+        </div>
+      </div>
+      <div class="chat-container flex-1 space-y-3 mb-3" id="chatContainer">
+        <div class="chat-bubble-ai p-3 text-sm text-gray-300 max-w-xs">
+          Hi! I am your CityPulse AI assistant. Ask me anything about the city you are exploring!
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <input type="text" id="chatInput" placeholder="Ask about this city..."
+          class="flex-1 bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500"
+          onkeypress="if(event.key==='Enter') sendChat()"/>
+        <button onclick="sendChat()" class="bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forecast + City Info Row -->
+  <div class="grid grid-cols-2 gap-6 mb-6">
+
+    <!-- 5-Hour Forecast -->
+    <div class="glass rounded-2xl p-4">
+      <h3 class="font-semibold text-white flex items-center gap-2 mb-4">
+        <i class="fas fa-clock text-purple-400"></i> 5-Step Forecast
+      </h3>
+      <div class="space-y-2" id="forecastContainer">
+        <div class="skeleton h-12 rounded-xl"></div>
+        <div class="skeleton h-12 rounded-xl"></div>
+        <div class="skeleton h-12 rounded-xl"></div>
+      </div>
+    </div>
+
+    <!-- City Info -->
+    <div class="glass rounded-2xl p-4">
+      <h3 class="font-semibold text-white flex items-center gap-2 mb-4">
+        <i class="fas fa-city text-purple-400"></i> City Highlights
+      </h3>
+      <div class="text-sm text-gray-400 leading-relaxed" id="cityInfo">
+        <div class="skeleton h-4 rounded mb-2"></div>
+        <div class="skeleton h-4 rounded mb-2"></div>
+        <div class="skeleton h-4 rounded w-3/4"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-white border-opacity-10 pt-6 pb-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">✈️</span>
+        <div>
+          <p class="text-white font-semibold">CityPulse</p>
+          <p class="text-gray-500 text-xs">Built with Google ADK + MCP Protocol</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4 text-gray-500 text-sm">
+        <a href="/about" class="hover:text-white transition-colors">About</a>
+        <a href="/contact" class="hover:text-white transition-colors">Contact</a>
+        <a href="/privacy" class="hover:text-white transition-colors">Privacy</a>
+        <a href="https://github.com/satyalekhana5/citypulse-v2" target="_blank" class="hover:text-white transition-colors">
+          <i class="fab fa-github text-xl"></i>
+        </a>
+      </div>
+    </div>
+    <p class="text-center text-gray-600 text-xs mt-4">Built by Satya Lekhana | 2025 CityPulse</p>
+  </footer>
+</main>
+
+<script>
+let map = null;
+let marker = null;
+let currentCity = 'Hyderabad';
+
+function updateTime() {
+  const now = new Date();
+  document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+async function loadCity() {
+  const input = document.getElementById('cityInput').value.trim();
+  if (input) selectCity(input);
+}
+
+async function selectCity(city) {
+  currentCity = city;
+  document.getElementById('currentCity').textContent = city;
+  document.getElementById('cityInput').value = city;
+  await Promise.all([
+    loadWeather(city),
+    loadForecast(city),
+    loadCityInfo(city)
+  ]);
+}
+
+async function loadWeather(city) {
+  try {
+    const r = await fetch('/api/weather?city=' + encodeURIComponent(city));
+    const data = await r.json();
+    if (data.error) return;
+
+    document.getElementById('weatherCity').textContent = data.city + ', ' + data.country;
+    document.getElementById('temperature').textContent = data.temperature + 'C';
+    document.getElementById('weatherDesc').textContent = data.description;
+    document.getElementById('feelsLike').textContent = 'Feels like ' + data.feels_like + 'C';
+    document.getElementById('humidity').textContent = data.humidity + '%';
+    document.getElementById('windSpeed').textContent = data.wind_speed;
+    document.getElementById('visibility').textContent = data.visibility;
+    document.getElementById('pressure').textContent = data.pressure;
+    document.getElementById('weatherIcon').src = 'https://openweathermap.org/img/wn/' + data.icon + '@2x.png';
+    document.getElementById('weatherTime').textContent = new Date().toLocaleDateString();
+
+    updateMap(data.lat, data.lon, data.city);
+    await loadCountry(data.country);
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function loadCountry(code) {
+  try {
+    const r = await fetch('/api/country?code=' + code);
+    const data = await r.json();
+    if (data.error) return;
+
+    document.getElementById('population').textContent = data.population;
+    document.getElementById('countryName').textContent = data.name;
+    document.getElementById('language').textContent = data.languages[0] || '-';
+    document.getElementById('currency').textContent = data.currencies[0] || '-';
+    if (data.flag) document.getElementById('countryFlag').src = data.flag;
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function loadForecast(city) {
+  try {
+    const r = await fetch('/api/forecast?city=' + encodeURIComponent(city));
+    const data = await r.json();
+    if (data.error || !data.forecasts) return;
+
+    const container = document.getElementById('forecastContainer');
+    container.innerHTML = '';
+    data.forecasts.forEach(f => {
+      const time = new Date(f.time).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+      container.innerHTML += '<div class="forecast-card rounded-xl p-3 flex items-center justify-between">' +
+        '<span class="text-gray-400 text-sm">' + time + '</span>' +
+        '<img src="https://openweathermap.org/img/wn/' + f.icon + '.png" class="w-8 h-8"/>' +
+        '<span class="text-white font-bold">' + f.temp + 'C</span>' +
+        '<span class="text-gray-500 text-xs">' + f.description + '</span>' +
+        '<span class="text-blue-400 text-xs">' + f.humidity + '% humidity</span>' +
+        '</div>';
+    });
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function loadCityInfo(city) {
+  try {
+    const r = await fetch('/api/places?city=' + encodeURIComponent(city));
+    const data = await r.json();
+    if (data.error) return;
+    document.getElementById('cityInfo').textContent = data.summary || 'No information available.';
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function updateMap(lat, lon, city) {
+  if (!map) {
+    map = L.map('map').setView([lat, lon], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: 'OpenStreetMap'
+    }).addTo(map);
+  } else {
+    map.setView([lat, lon], 12);
+  }
+  if (marker) map.removeLayer(marker);
+  marker = L.marker([lat, lon]).addTo(map).bindPopup(city).openPopup();
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const container = document.getElementById('chatContainer');
+  container.innerHTML += '<div class="flex justify-end"><div class="chat-bubble-user p-3 text-sm text-white max-w-xs">' + msg + '</div></div>';
+
+  container.innerHTML += '<div id="typing" class="chat-bubble-ai p-3 text-sm text-gray-400 max-w-xs">Thinking...</div>';
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: msg, city: currentCity})
+    });
+    const data = await r.json();
+    document.getElementById('typing').remove();
+    container.innerHTML += '<div class="chat-bubble-ai p-3 text-sm text-gray-300 max-w-xs">' + data.response + '</div>';
+    container.scrollTop = container.scrollHeight;
+  } catch(e) {
+    document.getElementById('typing').textContent = 'Error connecting. Try again!';
+  }
+}
+
+selectCity('Hyderabad');
+</script>
+</body>
+</html>

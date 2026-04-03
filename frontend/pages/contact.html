@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact - CityPulse</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<style>
+  body { background: #0a0f1e; font-family: 'Inter', sans-serif; }
+  .gradient-text { background: linear-gradient(135deg, #667eea, #764ba2, #f093fb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .glass { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+</style>
+</head>
+<body class="text-white min-h-screen">
+<nav class="border-b border-white border-opacity-10 p-6 flex items-center justify-between">
+  <a href="/" class="flex items-center gap-2">
+    <span class="text-2xl">✈️</span>
+    <span class="text-xl font-bold gradient-text">CityPulse</span>
+  </a>
+  <div class="flex gap-6 text-gray-400 text-sm">
+    <a href="/" class="hover:text-white">Dashboard</a>
+    <a href="/about" class="hover:text-white">About</a>
+    <a href="/contact" class="text-white">Contact</a>
+  </div>
+</nav>
+<div class="max-w-2xl mx-auto px-6 py-16">
+  <div class="text-center mb-12">
+    <h1 class="text-5xl font-black mb-4 gradient-text">Contact Us</h1>
+    <p class="text-gray-400">Have questions or feedback? We would love to hear from you!</p>
+  </div>
+  <div class="glass rounded-2xl p-8">
+    <div class="space-y-6">
+      <div>
+        <label class="text-sm text-gray-400 mb-2 block">Your Name</label>
+        <input type="text" placeholder="Enter your name"
+          class="w-full bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-purple-500 transition-colors"/>
+      </div>
+      <div>
+        <label class="text-sm text-gray-400 mb-2 block">Email Address</label>
+        <input type="email" placeholder="Enter your email"
+          class="w-full bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-purple-500 transition-colors"/>
+      </div>
+      <div>
+        <label class="text-sm text-gray-400 mb-2 block">Message</label>
+        <textarea rows="5" placeholder="Your message..."
+          class="w-full bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-purple-500 transition-colors resize-none"></textarea>
+      </div>
+      <button onclick="alert('Message sent! Thank you for reaching out.')"
+        class="w-full bg-gradient-to-r from-purple-500 to-pink-500 py-4 rounded-xl font-semibold hover:opacity-90 transition-opacity">
+        Send Message <i class="fas fa-paper-plane ml-2"></i>
+      </button>
+    </div>
+  </div>
+  <div class="grid grid-cols-3 gap-4 mt-8">
+    <div class="glass rounded-xl p-4 text-center">
+      <i class="fas fa-envelope text-purple-400 text-xl mb-2"></i>
+      <p class="text-xs text-gray-400">25pa1a0460@vishnu.edu.in</p>
+    </div>
+    <div class="glass rounded-xl p-4 text-center">
+      <i class="fab fa-github text-purple-400 text-xl mb-2"></i>
+      <p class="text-xs text-gray-400">github.com/satyalekhana5</p>
+    </div>
+    <div class="glass rounded-xl p-4 text-center">
+      <i class="fas fa-map-marker-alt text-purple-400 text-xl mb-2"></i>
+      <p class="text-xs text-gray-400">Hyderabad, India</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>
