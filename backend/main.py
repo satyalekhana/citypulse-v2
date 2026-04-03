@@ -2,7 +2,6 @@ import os
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -27,7 +26,9 @@ class ChatMessage(BaseModel):
     city: str
 
 
-class CityRequest(BaseModel):
+class TranslateRequest(BaseModel):
+    text: str
+    target_language: str
     city: str
 
 
@@ -94,18 +95,126 @@ async def get_forecast(city: str):
 @app.get("/api/places")
 async def get_places(city: str):
     try:
-        url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{city.replace(' ', '_').title()}"
+        search_url = f"https://en.wikipedia.org/w/api.php"
+        params = {
+            "action": "query",
+            "format": "json",
+            "titles": city,
+            "prop": "extracts",
+            "exintro": True,
+            "explaintext": True,
+            "redirects": True
+        }
         async with httpx.AsyncClient(timeout=30.0) as client:
-            r = await client.get(url)
+            r = await client.get(search_url, params=params)
             data = r.json()
-        summary = data.get("extract", "")[:800]
+        pages = data.get("query", {}).get("pages", {})
+        extract = ""
+        for page in pages.values():
+            extract = page.get("extract", "")[:800]
+            break
         return {
             "city": city,
-            "summary": summary,
-            "thumbnail": data.get("thumbnail", {}).get("source", "")
+            "summary": extract or f"{city} is a wonderful city to explore!"
         }
     except Exception as e:
         return {"error": str(e)}
+
+
+@app.get("/api/attractions")
+async def get_attractions(city: str):
+    try:
+        prompt = f"""List exactly 6 must-visit tourist attractions in {city}.
+For each attraction provide:
+- Name
+- One line description
+- Best time to visit
+- Entry fee (approximate)
+
+Format as JSON array like this:
+[
+  {{
+    "name": "Attraction Name",
+    "description": "Brief description",
+    "best_time": "Morning/Evening/Anytime",
+    "fee": "Free/Paid amount"
+  }}
+]
+Return ONLY the JSON array, nothing else."""
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            r = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": "Bearer " + str(GROQ_KEY),
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 800
+                }
+            )
+            data = r.json()
+            if "choices" in data:
+                import json
+                text = data["choices"][0]["message"]["content"]
+                start = text.find("[")
+                end = text.rfind("]") + 1
+                if start != -1 and end != 0:
+                    attractions = json.loads(text[start:end])
+                    return {"attractions": attractions}
+        return {"attractions": []}
+    except Exception as e:
+        return {"attractions": [], "error": str(e)}
+
+
+@app.post("/api/translate")
+async def translate(body: TranslateRequest):
+    try:
+        prompt = f"""Translate the following text to {body.target_language}.
+Also provide 5 useful travel phrases in {body.target_language} for a tourist visiting {body.city}.
+
+Text to translate: {body.text}
+
+Respond in JSON format:
+{{
+  "translated": "translation here",
+  "phrases": [
+    {{"english": "Hello", "translated": "local translation", "pronunciation": "how to say it"}},
+    {{"english": "Thank you", "translated": "local translation", "pronunciation": "how to say it"}},
+    {{"english": "Where is...", "translated": "local translation", "pronunciation": "how to say it"}},
+    {{"english": "How much?", "translated": "local translation", "pronunciation": "how to say it"}},
+    {{"english": "Help!", "translated": "local translation", "pronunciation": "how to say it"}}
+  ]
+}}
+Return ONLY the JSON, nothing else."""
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            r = await client.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={
+                    "Authorization": "Bearer " + str(GROQ_KEY),
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 600
+                }
+            )
+            data = r.json()
+            if "choices" in data:
+                import json
+                text = data["choices"][0]["message"]["content"]
+                start = text.find("{")
+                end = text.rfind("}") + 1
+                if start != -1 and end != 0:
+                    result = json.loads(text[start:end])
+                    return result
+        return {"translated": "Translation unavailable", "phrases": []}
+    except Exception as e:
+        return {"translated": "Error: " + str(e), "phrases": []}
 
 
 @app.get("/api/country")
@@ -154,7 +263,7 @@ Keep response under 150 words."""
             data = r.json()
             if "choices" in data:
                 return {"response": data["choices"][0]["message"]["content"]}
-            return {"response": "Sorry, I could not process that request."}
+        return {"response": "Sorry I could not process that request."}
     except Exception as e:
         return {"response": "Error: " + str(e)}
 

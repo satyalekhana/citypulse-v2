@@ -10,38 +10,38 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-  * { font-family: 'Inter', sans-serif; }
+  * { font-family: Inter, sans-serif; }
   body { background: #0a0f1e; color: white; }
   .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); }
-  .glass-dark { background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08); }
   .gradient-text { background: linear-gradient(135deg, #667eea, #764ba2, #f093fb); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .sidebar { background: rgba(10,15,30,0.95); border-right: 1px solid rgba(255,255,255,0.08); }
+  .sidebar { background: rgba(10,15,30,0.97); border-right: 1px solid rgba(255,255,255,0.08); }
   .nav-item { transition: all 0.2s; border-radius: 12px; }
   .nav-item:hover { background: rgba(255,255,255,0.08); }
   .nav-item.active { background: linear-gradient(135deg, rgba(102,126,234,0.3), rgba(118,75,162,0.3)); border: 1px solid rgba(102,126,234,0.4); }
   .weather-card { background: linear-gradient(135deg, #1a1f3a, #2d1f4e); border: 1px solid rgba(102,126,234,0.3); }
   .stat-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); transition: all 0.3s; }
   .stat-card:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
-  .chat-container { height: 300px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent; }
+  .chat-container { height: 260px; overflow-y: auto; }
   .chat-bubble-ai { background: rgba(102,126,234,0.2); border: 1px solid rgba(102,126,234,0.3); border-radius: 16px 16px 16px 4px; }
   .chat-bubble-user { background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px 16px 4px 16px; }
-  #map { border-radius: 16px; }
-  .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  .tab-btn { transition: all 0.2s; border-radius: 10px; }
+  .tab-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .attraction-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); transition: all 0.2s; border-radius: 16px; }
+  .attraction-card:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
   .pulse-dot { width: 8px; height: 8px; background: #4ade80; border-radius: 50%; animation: pulse 2s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-  .forecast-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); transition: all 0.2s; }
-  .forecast-card:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
-  input, textarea { outline: none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+  @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+  #map { border-radius: 16px; }
   ::-webkit-scrollbar { width: 4px; }
-  ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
-  .mobile-menu { display: none; }
-  @media (max-width: 768px) {
-    .sidebar { position: fixed; left: -280px; top: 0; height: 100vh; z-index: 50; transition: left 0.3s; width: 280px; }
-    .sidebar.open { left: 0; }
-    .mobile-menu { display: flex; }
-    .main-content { margin-left: 0; }
+  input,textarea { outline: none; }
+  @media(max-width:768px){
+    .sidebar{position:fixed;left:-280px;top:0;height:100vh;z-index:50;transition:left 0.3s;width:280px;}
+    .sidebar.open{left:0;}
+    .main-content{margin-left:0 !important;}
   }
 </style>
 </head>
@@ -49,21 +49,19 @@
 
 <!-- Sidebar -->
 <aside class="sidebar w-72 min-h-screen flex flex-col fixed left-0 top-0 h-full z-40" id="sidebar">
-  <!-- Logo -->
   <div class="p-6 border-b border-white border-opacity-10">
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xl">✈️</div>
       <div>
         <h1 class="text-xl font-bold gradient-text">CityPulse</h1>
-        <p class="text-xs text-gray-500">City Intelligence</p>
+        <p class="text-xs text-gray-500">City Intelligence V2</p>
       </div>
     </div>
   </div>
 
-  <!-- City Search -->
   <div class="p-4">
     <div class="relative">
-      <input type="text" id="cityInput" placeholder="Search city..." 
+      <input type="text" id="cityInput" placeholder="Search city..."
         class="w-full bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 pr-10"
         onkeypress="if(event.key==='Enter') loadCity()"/>
       <button onclick="loadCity()" class="absolute right-3 top-3 text-purple-400 hover:text-purple-300">
@@ -72,7 +70,6 @@
     </div>
   </div>
 
-  <!-- Popular Cities -->
   <div class="px-4 mb-4">
     <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Popular Cities</p>
     <div class="flex flex-wrap gap-2">
@@ -84,10 +81,11 @@
       <button onclick="selectCity('Singapore')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Singapore</button>
       <button onclick="selectCity('Hyderabad')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Hyderabad</button>
       <button onclick="selectCity('Sydney')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Sydney</button>
+      <button onclick="selectCity('Bangkok')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Bangkok</button>
+      <button onclick="selectCity('Rome')" class="text-xs bg-white bg-opacity-5 hover:bg-opacity-10 border border-white border-opacity-10 px-3 py-1.5 rounded-lg transition-all">Rome</button>
     </div>
   </div>
 
-  <!-- Navigation -->
   <nav class="px-4 flex-1">
     <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Navigation</p>
     <div class="space-y-1">
@@ -106,7 +104,6 @@
     </div>
   </nav>
 
-  <!-- Live Status -->
   <div class="p-4 border-t border-white border-opacity-10">
     <div class="flex items-center gap-2">
       <div class="pulse-dot"></div>
@@ -117,64 +114,60 @@
 </aside>
 
 <!-- Main Content -->
-<main class="main-content ml-72 flex-1 p-6 min-h-screen" id="mainContent">
+<main class="main-content flex-1 p-6 min-h-screen" style="margin-left:288px" id="mainContent">
 
   <!-- Top Bar -->
   <div class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
-      <button class="mobile-menu items-center justify-center w-10 h-10 glass rounded-xl text-gray-400" onclick="toggleSidebar()">
+      <button class="flex items-center justify-center w-10 h-10 glass rounded-xl text-gray-400 md:hidden" onclick="document.getElementById('sidebar').classList.toggle('open')">
         <i class="fas fa-bars"></i>
       </button>
       <div>
-        <h2 class="text-2xl font-bold text-white" id="pageTitle">Dashboard</h2>
-        <p class="text-sm text-gray-500" id="pageSubtitle">Real-time city intelligence</p>
+        <h2 class="text-2xl font-bold text-white">City Intelligence Dashboard</h2>
+        <p class="text-sm text-gray-500">Real-time data powered by AI</p>
       </div>
     </div>
     <div class="flex items-center gap-3">
       <div class="glass px-4 py-2 rounded-xl text-sm text-gray-400" id="currentTime"></div>
-      <div class="glass px-4 py-2 rounded-xl text-sm text-purple-400 font-medium" id="currentCity">Hyderabad</div>
+      <div class="glass px-4 py-2 rounded-xl text-sm text-purple-400 font-medium" id="currentCityBadge">Hyderabad</div>
     </div>
   </div>
 
-  <!-- Weather Hero Card -->
-  <div class="weather-card rounded-2xl p-6 mb-6" id="weatherCard">
+  <!-- Weather Hero -->
+  <div class="weather-card rounded-2xl p-6 mb-6">
     <div class="flex items-start justify-between">
       <div>
         <div class="flex items-center gap-2 mb-1">
           <span class="text-gray-400 text-sm" id="weatherCity">Loading...</span>
-          <img id="countryFlag" src="" class="h-4 rounded-sm" alt="flag"/>
+          <img id="countryFlag" src="" class="h-4 rounded-sm" alt=""/>
         </div>
-        <div class="text-7xl font-black text-white mb-2" id="temperature">
-          <div class="skeleton h-16 w-32 rounded-xl"></div>
-        </div>
+        <div class="text-7xl font-black text-white mb-2" id="temperature">--</div>
         <div class="text-gray-400 text-lg capitalize" id="weatherDesc">Fetching weather...</div>
         <div class="text-gray-500 text-sm mt-1" id="feelsLike"></div>
       </div>
       <div class="text-right">
-        <img id="weatherIcon" src="" class="w-24 h-24" alt="weather"/>
-        <div class="text-gray-400 text-sm mt-2" id="weatherTime"></div>
+        <img id="weatherIcon" src="" class="w-24 h-24" alt=""/>
+        <div class="text-gray-400 text-sm mt-2" id="weatherDate"></div>
       </div>
     </div>
-
-    <!-- Weather Stats -->
     <div class="grid grid-cols-4 gap-4 mt-6">
       <div class="glass rounded-xl p-3 text-center">
-        <i class="fas fa-droplet text-blue-400 mb-1"></i>
+        <i class="fas fa-droplet text-blue-400 mb-1 block"></i>
         <div class="text-white font-bold" id="humidity">-</div>
         <div class="text-gray-500 text-xs">Humidity</div>
       </div>
       <div class="glass rounded-xl p-3 text-center">
-        <i class="fas fa-wind text-green-400 mb-1"></i>
+        <i class="fas fa-wind text-green-400 mb-1 block"></i>
         <div class="text-white font-bold" id="windSpeed">-</div>
         <div class="text-gray-500 text-xs">Wind km/h</div>
       </div>
       <div class="glass rounded-xl p-3 text-center">
-        <i class="fas fa-eye text-yellow-400 mb-1"></i>
+        <i class="fas fa-eye text-yellow-400 mb-1 block"></i>
         <div class="text-white font-bold" id="visibility">-</div>
         <div class="text-gray-500 text-xs">Visibility km</div>
       </div>
       <div class="glass rounded-xl p-3 text-center">
-        <i class="fas fa-gauge text-purple-400 mb-1"></i>
+        <i class="fas fa-gauge text-purple-400 mb-1 block"></i>
         <div class="text-white font-bold" id="pressure">-</div>
         <div class="text-gray-500 text-xs">Pressure hPa</div>
       </div>
@@ -196,7 +189,7 @@
         <span class="text-gray-400 text-sm">Language</span>
         <i class="fas fa-language text-blue-400"></i>
       </div>
-      <div class="text-2xl font-bold text-white" id="language">-</div>
+      <div class="text-xl font-bold text-white" id="language">-</div>
       <div class="text-gray-500 text-xs mt-1">Official Language</div>
     </div>
     <div class="stat-card rounded-2xl p-5">
@@ -204,100 +197,166 @@
         <span class="text-gray-400 text-sm">Currency</span>
         <i class="fas fa-coins text-yellow-400"></i>
       </div>
-      <div class="text-2xl font-bold text-white" id="currency">-</div>
+      <div class="text-xl font-bold text-white" id="currency">-</div>
       <div class="text-gray-500 text-xs mt-1">Local Currency</div>
     </div>
   </div>
 
-  <!-- Map + Chat Row -->
-  <div class="grid grid-cols-2 gap-6 mb-6">
-
-    <!-- Map -->
-    <div class="glass rounded-2xl p-4">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="font-semibold text-white flex items-center gap-2">
-          <i class="fas fa-map-location-dot text-purple-400"></i> Live Map
-        </h3>
-        <span class="text-xs text-gray-500">OpenStreetMap</span>
-      </div>
-      <div id="map" style="height: 280px;"></div>
+  <!-- Tabs Section -->
+  <div class="glass rounded-2xl p-6 mb-6">
+    <div class="flex gap-2 mb-6 flex-wrap">
+      <button onclick="switchTab('map')" id="tab-map" class="tab-btn active px-4 py-2 text-sm font-medium text-white">
+        <i class="fas fa-map mr-2"></i>Live Map
+      </button>
+      <button onclick="switchTab('attractions')" id="tab-attractions" class="tab-btn px-4 py-2 text-sm font-medium text-gray-400">
+        <i class="fas fa-landmark mr-2"></i>Places to Visit
+      </button>
+      <button onclick="switchTab('translator')" id="tab-translator" class="tab-btn px-4 py-2 text-sm font-medium text-gray-400">
+        <i class="fas fa-language mr-2"></i>Language Tool
+      </button>
+      <button onclick="switchTab('forecast')" id="tab-forecast" class="tab-btn px-4 py-2 text-sm font-medium text-gray-400">
+        <i class="fas fa-cloud mr-2"></i>Forecast
+      </button>
+      <button onclick="switchTab('info')" id="tab-info" class="tab-btn px-4 py-2 text-sm font-medium text-gray-400">
+        <i class="fas fa-city mr-2"></i>City Info
+      </button>
     </div>
 
-    <!-- AI Chat -->
-    <div class="glass rounded-2xl p-4 flex flex-col">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="font-semibold text-white flex items-center gap-2">
-          <i class="fas fa-robot text-purple-400"></i> AI Assistant
-        </h3>
-        <div class="flex items-center gap-1">
-          <div class="pulse-dot"></div>
-          <span class="text-xs text-gray-500">Online</span>
-        </div>
-      </div>
-      <div class="chat-container flex-1 space-y-3 mb-3" id="chatContainer">
-        <div class="chat-bubble-ai p-3 text-sm text-gray-300 max-w-xs">
-          Hi! I am your CityPulse AI assistant. Ask me anything about the city you are exploring!
-        </div>
-      </div>
-      <div class="flex gap-2">
-        <input type="text" id="chatInput" placeholder="Ask about this city..."
-          class="flex-1 bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500"
-          onkeypress="if(event.key==='Enter') sendChat()"/>
-        <button onclick="sendChat()" class="bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2.5 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity">
-          <i class="fas fa-paper-plane"></i>
+    <!-- Map Tab -->
+    <div id="content-map" class="tab-content active">
+      <div id="map" style="height:350px;"></div>
+    </div>
+
+    <!-- Attractions Tab -->
+    <div id="content-attractions" class="tab-content">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-white">Must Visit Places</h3>
+        <button onclick="loadAttractions(currentCity)" class="text-xs bg-purple-500 bg-opacity-20 border border-purple-500 border-opacity-30 px-3 py-1.5 rounded-lg text-purple-400 hover:bg-opacity-30 transition-all">
+          <i class="fas fa-sync mr-1"></i> Refresh
         </button>
+      </div>
+      <div class="grid grid-cols-2 gap-4" id="attractionsContainer">
+        <div class="skeleton h-32"></div>
+        <div class="skeleton h-32"></div>
+        <div class="skeleton h-32"></div>
+        <div class="skeleton h-32"></div>
+      </div>
+    </div>
+
+    <!-- Translator Tab -->
+    <div id="content-translator" class="tab-content">
+      <div class="grid grid-cols-2 gap-6">
+        <div>
+          <h3 class="font-semibold text-white mb-4">Language Converter</h3>
+          <div class="mb-4">
+            <label class="text-xs text-gray-400 mb-2 block">Text to Translate</label>
+            <textarea id="translateInput" rows="4" placeholder="Enter text to translate..."
+              class="w-full bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 resize-none"></textarea>
+          </div>
+          <div class="mb-4">
+            <label class="text-xs text-gray-400 mb-2 block">Target Language</label>
+            <select id="targetLang" class="w-full bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl px-4 py-3 text-sm text-white">
+              <option value="Japanese">Japanese</option>
+              <option value="French">French</option>
+              <option value="Arabic">Arabic</option>
+              <option value="Hindi">Hindi</option>
+              <option value="Spanish">Spanish</option>
+              <option value="German">German</option>
+              <option value="Italian">Italian</option>
+              <option value="Korean">Korean</option>
+              <option value="Chinese">Chinese</option>
+              <option value="Thai">Thai</option>
+              <option value="Telugu">Telugu</option>
+            </select>
+          </div>
+          <button onclick="translateText()" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+            <i class="fas fa-language mr-2"></i>Translate
+          </button>
+          <div id="translateResult" class="mt-4 p-4 bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl text-sm text-white hidden"></div>
+        </div>
+        <div>
+          <h3 class="font-semibold text-white mb-4">Useful Travel Phrases</h3>
+          <div class="space-y-3" id="phrasesContainer">
+            <p class="text-gray-500 text-sm">Translate something to see useful phrases!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Forecast Tab -->
+    <div id="content-forecast" class="tab-content">
+      <h3 class="font-semibold text-white mb-4">5-Step Weather Forecast</h3>
+      <div class="space-y-3" id="forecastContainer">
+        <div class="skeleton h-14"></div>
+        <div class="skeleton h-14"></div>
+        <div class="skeleton h-14"></div>
+      </div>
+    </div>
+
+    <!-- City Info Tab -->
+    <div id="content-info" class="tab-content">
+      <h3 class="font-semibold text-white mb-4">City Highlights</h3>
+      <div class="text-sm text-gray-400 leading-relaxed" id="cityInfo">
+        <div class="skeleton h-4 mb-2"></div>
+        <div class="skeleton h-4 mb-2"></div>
+        <div class="skeleton h-4 w-3/4 mb-2"></div>
       </div>
     </div>
   </div>
 
-  <!-- Forecast + City Info Row -->
-  <div class="grid grid-cols-2 gap-6 mb-6">
-
-    <!-- 5-Hour Forecast -->
-    <div class="glass rounded-2xl p-4">
-      <h3 class="font-semibold text-white flex items-center gap-2 mb-4">
-        <i class="fas fa-clock text-purple-400"></i> 5-Step Forecast
+  <!-- AI Chat -->
+  <div class="glass rounded-2xl p-6 mb-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-semibold text-white flex items-center gap-2">
+        <i class="fas fa-robot text-purple-400"></i> AI City Assistant
       </h3>
-      <div class="space-y-2" id="forecastContainer">
-        <div class="skeleton h-12 rounded-xl"></div>
-        <div class="skeleton h-12 rounded-xl"></div>
-        <div class="skeleton h-12 rounded-xl"></div>
+      <div class="flex items-center gap-2">
+        <div class="pulse-dot"></div>
+        <span class="text-xs text-gray-500">Powered by Groq LLaMA 3.3</span>
       </div>
     </div>
-
-    <!-- City Info -->
-    <div class="glass rounded-2xl p-4">
-      <h3 class="font-semibold text-white flex items-center gap-2 mb-4">
-        <i class="fas fa-city text-purple-400"></i> City Highlights
-      </h3>
-      <div class="text-sm text-gray-400 leading-relaxed" id="cityInfo">
-        <div class="skeleton h-4 rounded mb-2"></div>
-        <div class="skeleton h-4 rounded mb-2"></div>
-        <div class="skeleton h-4 rounded w-3/4"></div>
+    <div class="chat-container space-y-3 mb-4" id="chatContainer">
+      <div class="chat-bubble-ai p-3 text-sm text-gray-300 inline-block max-w-lg">
+        Hi! I am your CityPulse AI assistant. Ask me anything about the city you are exploring — food, culture, travel tips, hidden gems and more!
       </div>
+    </div>
+    <div class="flex gap-3">
+      <input type="text" id="chatInput" placeholder="Ask about this city..."
+        class="flex-1 bg-white bg-opacity-5 border border-white border-opacity-10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500"
+        onkeypress="if(event.key==='Enter') sendChat()"/>
+      <button onclick="sendChat()" class="bg-gradient-to-r from-purple-500 to-pink-500 px-5 py-3 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+    <!-- Quick Questions -->
+    <div class="flex gap-2 mt-3 flex-wrap">
+      <button onclick="quickChat('Best food to try?')" class="text-xs bg-white bg-opacity-5 border border-white border-opacity-10 px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all">Best food?</button>
+      <button onclick="quickChat('Safety tips for tourists?')" class="text-xs bg-white bg-opacity-5 border border-white border-opacity-10 px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all">Safety tips?</button>
+      <button onclick="quickChat('Best time to visit?')" class="text-xs bg-white bg-opacity-5 border border-white border-opacity-10 px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all">Best time?</button>
+      <button onclick="quickChat('Hidden gems and local secrets?')" class="text-xs bg-white bg-opacity-5 border border-white border-opacity-10 px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all">Hidden gems?</button>
+      <button onclick="quickChat('Budget travel tips?')" class="text-xs bg-white bg-opacity-5 border border-white border-opacity-10 px-3 py-1.5 rounded-lg text-gray-400 hover:text-white transition-all">Budget tips?</button>
     </div>
   </div>
 
   <!-- Footer -->
   <footer class="border-t border-white border-opacity-10 pt-6 pb-4">
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between flex-wrap gap-4">
       <div class="flex items-center gap-2">
         <span class="text-2xl">✈️</span>
         <div>
-          <p class="text-white font-semibold">CityPulse</p>
+          <p class="text-white font-semibold">CityPulse V2</p>
           <p class="text-gray-500 text-xs">Built with Google ADK + MCP Protocol</p>
         </div>
       </div>
       <div class="flex items-center gap-4 text-gray-500 text-sm">
         <a href="/about" class="hover:text-white transition-colors">About</a>
         <a href="/contact" class="hover:text-white transition-colors">Contact</a>
-        <a href="/privacy" class="hover:text-white transition-colors">Privacy</a>
         <a href="https://github.com/satyalekhana5/citypulse-v2" target="_blank" class="hover:text-white transition-colors">
           <i class="fab fa-github text-xl"></i>
         </a>
       </div>
     </div>
-    <p class="text-center text-gray-600 text-xs mt-4">Built by Satya Lekhana | 2025 CityPulse</p>
+    <p class="text-center text-gray-600 text-xs mt-4">Built by Satya Lekhana | CityPulse 2025</p>
   </footer>
 </main>
 
@@ -307,14 +366,24 @@ let marker = null;
 let currentCity = 'Hyderabad';
 
 function updateTime() {
-  const now = new Date();
-  document.getElementById('currentTime').textContent = now.toLocaleTimeString();
+  document.getElementById('currentTime').textContent = new Date().toLocaleTimeString();
 }
 setInterval(updateTime, 1000);
 updateTime();
 
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.remove('active');
+    b.classList.add('text-gray-400');
+    b.classList.remove('text-white');
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.remove('text-gray-400');
+  document.getElementById('tab-' + tab).classList.add('text-white');
+  document.getElementById('content-' + tab).classList.add('active');
+  if (tab === 'map' && map) { setTimeout(() => map.invalidateSize(), 100); }
+  if (tab === 'attractions') { loadAttractions(currentCity); }
 }
 
 async function loadCity() {
@@ -324,7 +393,7 @@ async function loadCity() {
 
 async function selectCity(city) {
   currentCity = city;
-  document.getElementById('currentCity').textContent = city;
+  document.getElementById('currentCityBadge').textContent = city;
   document.getElementById('cityInput').value = city;
   await Promise.all([
     loadWeather(city),
@@ -337,8 +406,7 @@ async function loadWeather(city) {
   try {
     const r = await fetch('/api/weather?city=' + encodeURIComponent(city));
     const data = await r.json();
-    if (data.error) return;
-
+    if (data.error) { alert('City not found! Try another city.'); return; }
     document.getElementById('weatherCity').textContent = data.city + ', ' + data.country;
     document.getElementById('temperature').textContent = data.temperature + 'C';
     document.getElementById('weatherDesc').textContent = data.description;
@@ -348,13 +416,10 @@ async function loadWeather(city) {
     document.getElementById('visibility').textContent = data.visibility;
     document.getElementById('pressure').textContent = data.pressure;
     document.getElementById('weatherIcon').src = 'https://openweathermap.org/img/wn/' + data.icon + '@2x.png';
-    document.getElementById('weatherTime').textContent = new Date().toLocaleDateString();
-
+    document.getElementById('weatherDate').textContent = new Date().toLocaleDateString();
     updateMap(data.lat, data.lon, data.city);
     await loadCountry(data.country);
-  } catch(e) {
-    console.error(e);
-  }
+  } catch(e) { console.error(e); }
 }
 
 async function loadCountry(code) {
@@ -362,48 +427,105 @@ async function loadCountry(code) {
     const r = await fetch('/api/country?code=' + code);
     const data = await r.json();
     if (data.error) return;
-
     document.getElementById('population').textContent = data.population;
     document.getElementById('countryName').textContent = data.name;
     document.getElementById('language').textContent = data.languages[0] || '-';
     document.getElementById('currency').textContent = data.currencies[0] || '-';
     if (data.flag) document.getElementById('countryFlag').src = data.flag;
-  } catch(e) {
-    console.error(e);
-  }
+  } catch(e) { console.error(e); }
 }
 
 async function loadForecast(city) {
   try {
     const r = await fetch('/api/forecast?city=' + encodeURIComponent(city));
     const data = await r.json();
-    if (data.error || !data.forecasts) return;
-
+    if (!data.forecasts) return;
     const container = document.getElementById('forecastContainer');
     container.innerHTML = '';
     data.forecasts.forEach(f => {
       const time = new Date(f.time).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-      container.innerHTML += '<div class="forecast-card rounded-xl p-3 flex items-center justify-between">' +
-        '<span class="text-gray-400 text-sm">' + time + '</span>' +
-        '<img src="https://openweathermap.org/img/wn/' + f.icon + '.png" class="w-8 h-8"/>' +
+      container.innerHTML += '<div class="flex items-center justify-between bg-white bg-opacity-4 border border-white border-opacity-8 rounded-xl p-4">' +
+        '<span class="text-gray-400 text-sm w-20">' + time + '</span>' +
+        '<img src="https://openweathermap.org/img/wn/' + f.icon + '.png" class="w-10 h-10"/>' +
         '<span class="text-white font-bold">' + f.temp + 'C</span>' +
-        '<span class="text-gray-500 text-xs">' + f.description + '</span>' +
+        '<span class="text-gray-400 text-sm flex-1 text-center">' + f.description + '</span>' +
         '<span class="text-blue-400 text-xs">' + f.humidity + '% humidity</span>' +
         '</div>';
     });
-  } catch(e) {
-    console.error(e);
-  }
+  } catch(e) { console.error(e); }
 }
 
 async function loadCityInfo(city) {
   try {
     const r = await fetch('/api/places?city=' + encodeURIComponent(city));
     const data = await r.json();
-    if (data.error) return;
     document.getElementById('cityInfo').textContent = data.summary || 'No information available.';
+  } catch(e) { console.error(e); }
+}
+
+async function loadAttractions(city) {
+  const container = document.getElementById('attractionsContainer');
+  container.innerHTML = '<div class="skeleton h-32 col-span-2"></div><div class="skeleton h-32 col-span-2"></div>';
+  try {
+    const r = await fetch('/api/attractions?city=' + encodeURIComponent(city));
+    const data = await r.json();
+    if (!data.attractions || data.attractions.length === 0) {
+      container.innerHTML = '<p class="text-gray-500 col-span-2">No attractions found.</p>';
+      return;
+    }
+    container.innerHTML = '';
+    const icons = ['fas fa-landmark', 'fas fa-mountain', 'fas fa-museum', 'fas fa-church', 'fas fa-tree', 'fas fa-water'];
+    const colors = ['text-purple-400', 'text-blue-400', 'text-green-400', 'text-yellow-400', 'text-pink-400', 'text-red-400'];
+    data.attractions.forEach((a, i) => {
+      container.innerHTML += '<div class="attraction-card p-5">' +
+        '<div class="flex items-start gap-3 mb-3">' +
+        '<div class="w-10 h-10 rounded-xl bg-white bg-opacity-5 flex items-center justify-center flex-shrink-0">' +
+        '<i class="' + icons[i % icons.length] + ' ' + colors[i % colors.length] + '"></i>' +
+        '</div>' +
+        '<div><h4 class="text-white font-semibold text-sm">' + a.name + '</h4>' +
+        '<p class="text-gray-400 text-xs mt-1">' + a.description + '</p></div></div>' +
+        '<div class="flex gap-3 text-xs">' +
+        '<span class="bg-green-500 bg-opacity-20 text-green-400 px-2 py-1 rounded-lg">' +
+        '<i class="fas fa-clock mr-1"></i>' + a.best_time + '</span>' +
+        '<span class="bg-yellow-500 bg-opacity-20 text-yellow-400 px-2 py-1 rounded-lg">' +
+        '<i class="fas fa-ticket mr-1"></i>' + a.fee + '</span>' +
+        '</div></div>';
+    });
   } catch(e) {
-    console.error(e);
+    container.innerHTML = '<p class="text-gray-500">Error loading attractions.</p>';
+  }
+}
+
+async function translateText() {
+  const text = document.getElementById('translateInput').value.trim();
+  const lang = document.getElementById('targetLang').value;
+  if (!text) { alert('Please enter text to translate!'); return; }
+  const resultDiv = document.getElementById('translateResult');
+  const phrasesDiv = document.getElementById('phrasesContainer');
+  resultDiv.innerHTML = 'Translating...';
+  resultDiv.classList.remove('hidden');
+  try {
+    const r = await fetch('/api/translate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: text, target_language: lang, city: currentCity})
+    });
+    const data = await r.json();
+    resultDiv.innerHTML = '<p class="text-gray-400 text-xs mb-1">Translation (' + lang + '):</p>' +
+      '<p class="text-white font-medium">' + data.translated + '</p>';
+    if (data.phrases && data.phrases.length > 0) {
+      phrasesDiv.innerHTML = '';
+      data.phrases.forEach(p => {
+        phrasesDiv.innerHTML += '<div class="bg-white bg-opacity-4 border border-white border-opacity-8 rounded-xl p-3">' +
+          '<div class="flex justify-between items-start">' +
+          '<div><p class="text-gray-400 text-xs">' + p.english + '</p>' +
+          '<p class="text-white text-sm font-medium">' + p.translated + '</p></div>' +
+          '<span class="text-purple-400 text-xs italic">' + p.pronunciation + '</span>' +
+          '</div></div>';
+      });
+    }
+  } catch(e) {
+    resultDiv.innerHTML = 'Translation failed. Try again!';
   }
 }
 
@@ -417,7 +539,7 @@ function updateMap(lat, lon, city) {
     map.setView([lat, lon], 12);
   }
   if (marker) map.removeLayer(marker);
-  marker = L.marker([lat, lon]).addTo(map).bindPopup(city).openPopup();
+  marker = L.marker([lat, lon]).addTo(map).bindPopup('<b>' + city + '</b>').openPopup();
 }
 
 async function sendChat() {
@@ -425,13 +547,11 @@ async function sendChat() {
   const msg = input.value.trim();
   if (!msg) return;
   input.value = '';
-
-  const container = document.getElementById('chatContainer');
-  container.innerHTML += '<div class="flex justify-end"><div class="chat-bubble-user p-3 text-sm text-white max-w-xs">' + msg + '</div></div>';
-
-  container.innerHTML += '<div id="typing" class="chat-bubble-ai p-3 text-sm text-gray-400 max-w-xs">Thinking...</div>';
-  container.scrollTop = container.scrollHeight;
-
+  addChatMessage(msg, 'user');
+  const typingId = 'typing-' + Date.now();
+  document.getElementById('chatContainer').innerHTML +=
+    '<div id="' + typingId + '" class="chat-bubble-ai p-3 text-sm text-gray-400 inline-block">Thinking...</div>';
+  scrollChat();
   try {
     const r = await fetch('/api/chat', {
       method: 'POST',
@@ -439,12 +559,31 @@ async function sendChat() {
       body: JSON.stringify({message: msg, city: currentCity})
     });
     const data = await r.json();
-    document.getElementById('typing').remove();
-    container.innerHTML += '<div class="chat-bubble-ai p-3 text-sm text-gray-300 max-w-xs">' + data.response + '</div>';
-    container.scrollTop = container.scrollHeight;
+    document.getElementById(typingId).remove();
+    addChatMessage(data.response, 'ai');
   } catch(e) {
-    document.getElementById('typing').textContent = 'Error connecting. Try again!';
+    document.getElementById(typingId).textContent = 'Error. Please try again!';
   }
+}
+
+function quickChat(msg) {
+  document.getElementById('chatInput').value = msg;
+  sendChat();
+}
+
+function addChatMessage(msg, type) {
+  const container = document.getElementById('chatContainer');
+  if (type === 'user') {
+    container.innerHTML += '<div class="flex justify-end"><div class="chat-bubble-user p-3 text-sm text-white inline-block max-w-sm">' + msg + '</div></div>';
+  } else {
+    container.innerHTML += '<div class="chat-bubble-ai p-3 text-sm text-gray-300 inline-block max-w-lg">' + msg + '</div>';
+  }
+  scrollChat();
+}
+
+function scrollChat() {
+  const c = document.getElementById('chatContainer');
+  c.scrollTop = c.scrollHeight;
 }
 
 selectCity('Hyderabad');
